@@ -32,7 +32,7 @@ OUTPUT_VIDEO_PATH = f"{time_now}.mp4"
 # (список: GET https://openrouter.ai/api/v1/videos/models), иначе будет ошибка 400.
 # Если None — параметр не отправляется, модель берёт значение по умолчанию.
 DURATION = 5       # например 4, 5, 8
-RESOLUTION = "480p"     # например "720p"
+RESOLUTION = "768p"     # например "720p"
 ASPECT_RATIO = None   # например "16:9", "9:16"
 
 # Сжатие изображения перед отправкой
@@ -176,6 +176,25 @@ def generate_video(input_path: str, prompt: str, output_path: str, max_attempts:
 
 if __name__ == "__main__":
     input_image = input("Введите путь к входному изображению: ").strip().strip('"').strip("'")
-    prompt = "оживи фотографию, добавь легкие движения тела и эмоции. не меняй черты лица и сохрани стиль оригинала"
+    prompt = """
+Animate this photograph with extremely subtle, natural motion.
+
+Preserve the person's exact facial identity and appearance from the original image. The face must remain unchanged throughout the entire video: same facial proportions, eyes, nose, mouth, jawline, skin texture, age and expression.
+
+The person remains almost completely still.
+Only subtle natural breathing, one gentle blink and a very slight natural eye movement.
+No head turn. No smile. No speaking. No change of facial expression.
+
+Keep the hairstyle, clothing, body proportions, background, lighting and composition exactly as in the original photograph.
+
+Camera is completely static.
+No zoom, no camera movement, no perspective change.
+
+The animation should feel like the original photograph has naturally come to life, not like a newly generated person.
+
+Very low motion. Photorealistic. Natural and restrained.
+No face morphing, no identity change, no facial distortion, no beautification, no regeneration of facial features, no new details.
+
+"""
     generate_video(input_image, prompt, OUTPUT_VIDEO_PATH)
 
