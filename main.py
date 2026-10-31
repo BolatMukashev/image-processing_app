@@ -16,12 +16,13 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 MODEL = "openai/gpt-image-2.5-sunburst"
 
-INPUT_IMAGE_PATH = input("Введите путь к входному изображению: ")  # Например: "input.jpg"
-OUTPUT_IMAGE_PATH = "output.png"
-
-# PROMPT = "сделай фото на документы из этого фото. увеличь детализацию, осветли, фон белый. убери лишние элементы на фоне. тон кожи светлее. сохрани узнаваемыми черты лица, и не меняй одежду. не приближай кадр"  # тестовый запрос
-# PROMPT = "восстанови фото. не меняй черты лица, одежду и фон. увеличь детализацию. не меняй одежду. не приближай кадр. покрась фото"  # тестовый запрос
-PROMPT = "сделай фото на документы из этого фото. увеличь детализацию, повысь резкость, осветли. сделай фон светлый, примерно #f8f7f5. убери лишние элементы на фоне. тон кожи светлее. сохрани узнаваемыми черты лица, и не меняй одежду. не приближай кадр"
+# Словарь промптов: номер -> путь к .txt файлу с текстом промпта.
+# Чтобы добавить новый промпт, просто допишите строку с новым номером.
+PROMPT_FILES = {
+    1: "PROMPTS/usa.txt",
+    2: "PROMPTS/restavr.txt",
+    3: "PROMPTS/white_bg.txt",
+}
 
 API_URL = "https://openrouter.ai/api/v1/images"
 
@@ -32,6 +33,55 @@ JPEG_QUALITY = 85      # качество JPEG-сжатия (0-100)
 # Параметры повторных попыток
 MAX_ATTEMPTS = 3
 RETRY_DELAY_BASE = 3   # секунд, увеличивается с каждой попыткой
+
+
+def load_prompt(prompt_number: int) -> str:
+    """Читает текст промпта из файла по номеру из словаря PROMPT_FILES."""
+    if prompt_number not in PROMPT_FILES:
+        raise KeyError(f"Промпта с номером {prompt_number} нет в PROMPT_FILES.")
+
+    prompt_path = Path(PROMPT_FILES[prompt_number])
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Файл промпта не найден: {prompt_path}")
+
+    text = prompt_path.read_text(encoding="utf-8").strip()
+    if not text:
+        raise ValueError(f"Файл промпта пустой: {prompt_path}")
+
+    return text
+
+
+def make_output_path(input_path: str) -> str:
+    """Путь для результата: рядом с оригиналом, имя с цифрой (photo.jpg -> photo_1.png).
+    Если такой файл уже есть, берётся следующая цифра (photo_2.png и т.д.),
+    чтобы не перезаписывать прошлые результаты."""
+    src = Path(input_path)
+    n = 1
+    while True:
+        candidate = src.with_name(f"{src.stem}_{n}.png")
+        if not candidate.exists():
+            return str(candidate)
+        n += 1
+
+
+def ask_prompt_number() -> int:
+    """Показывает список доступных промптов и просит ввести номер."""
+    print("Доступные промпты:")
+    for number, path in sorted(PROMPT_FILES.items()):
+        print(f"  {number}: {path}")
+
+    while True:
+        raw = input("Введите номер промпта: ").strip()
+        if not raw.isdigit():
+            print("Нужно ввести цифру. Попробуйте ещё раз.")
+            continue
+
+        number = int(raw)
+        if number not in PROMPT_FILES:
+            print(f"Промпта с номером {number} нет. Попробуйте ещё раз.")
+            continue
+
+        return number
 
 
 def resize_and_encode_image(image_path: str, max_side: int = MAX_SIDE, quality: int = JPEG_QUALITY) -> str:
@@ -127,4 +177,11 @@ def process_image(input_path: str, prompt: str, output_path: str, max_attempts: 
 
 
 if __name__ == "__main__":
-    process_image(INPUT_IMAGE_PATH, PROMPT, OUTPUT_IMAGE_PATH)
+    input_image_path = input("Введите путь к входному изображению: ").strip().strip('"')  # Например: "input.jpg"
+    prompt_number = ask_prompt_number()
+    prompt = load_prompt(prompt_number)
+    print(f"Используется промпт №{prompt_number}: {PROMPT_FILES[prompt_number]}")
+
+    output_image_path = make_output_path(input_image_path)
+
+    process_image(input_image_path, prompt, output_image_path)
